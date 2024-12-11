@@ -1,52 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gastpagina</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script>
-        const API_KEY = "nadminkobani";
-
-        async function handleSlagboom() {
-            const kenteken = document.getElementById('kenteken').value;
-
-            if (!kenteken) {
-                displayMessage("Voer een kenteken in.", "red");
-                return;
-            }
-
-            try {
-                const response = await fetch('http://127.0.0.1:4000/logboek', {
-                    method: 'POST',
-                    headers: {
-                        'X-API-KEY': API_KEY,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ kenteken })
-                });
-
-                const data = await response.json();
-                displayMessage(data.message, data.status === "success" ? "green" : "red");
-            } catch (error) {
-                console.error('Fout bij verwerken slagboom:', error);
-                displayMessage("Er is een fout opgetreden. Probeer het opnieuw.", "red");
-            }
+    <!-- Link naar de style.css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
         }
 
-        function displayMessage(message, color) {
-            const responseMessage = document.getElementById('responseMessage');
-            responseMessage.textContent = message;
-            responseMessage.style.color = color;
+        h1 {
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
-    </script>
+
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        p {
+            font-size: 16px;
+            color: #555;
+        }
+    </style>
 </head>
 <body>
     <h1>Gastpagina</h1>
-    <div class="container">
-        <label for="kenteken">Kenteken:</label>
-        <input id="kenteken" type="text" placeholder="Voer kenteken in" maxlength="10" onkeypress="if(event.key === 'Enter') handleSlagboom()">
-        <p id="responseMessage"></p>
-    </div>
+    <input type="text" id="kenteken" placeholder="Kenteken">
+    <button onclick="submitKenteken()">Verstuur</button>
+    <p id="responseMessage"></p>
+
+    <script>
+        async function submitKenteken() {
+            const kenteken = document.getElementById("kenteken").value;
+            const response = await fetch('/guest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kenteken })
+            });
+            const result = await response.json();
+            document.getElementById("responseMessage").textContent = result.message;
+        }
+    </script>
 </body>
 </html>

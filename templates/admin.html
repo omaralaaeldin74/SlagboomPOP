@@ -1,68 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beheerspagina</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script>
-        const API_KEY = "nadminkobani";
-
-        async function fetchLogbook() {
-            try {
-                const response = await fetch('http://127.0.0.1:4000/logboek', {
-                    method: 'GET',
-                    headers: {
-                        'X-API-KEY': API_KEY
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error("Fout bij ophalen logboek");
-                }
-
-                const data = await response.json();
-                updateLogbook(data);
-            } catch (error) {
-                console.error('Fout bij ophalen logboek:', error);
-                alert("Kon logboek niet ophalen. Probeer het later opnieuw.");
-            }
-        }
-
-        function updateLogbook(logbookEntries) {
-            const binnenList = document.getElementById('binnenkomendList');
-            const uitList = document.getElementById('uitgaandList');
-
-            binnenList.innerHTML = '';
-            uitList.innerHTML = '';
-
-            logbookEntries.forEach(entry => {
-                const item = document.createElement('li');
-                item.textContent = `${entry.tijdstip} - ${entry.kenteken} (${entry.gastnaam})`;
-
-                if (entry.actie === "binnengekomen") {
-                    binnenList.appendChild(item);
-                } else if (entry.actie === "vertrokken") {
-                    uitList.appendChild(item);
-                }
-            });
-        }
-
-        document.addEventListener("DOMContentLoaded", fetchLogbook);
-    </script>
+    <title>Adminpagina</title>
+    <!-- Link naar de style.css -->
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <h1>Beheerspagina</h1>
-    <div class="container">
-        <h2>Logboek</h2>
-        <div class="logbook">
-            <h3>Binnenkomend</h3>
-            <ul id="binnenkomendList"></ul>
-        </div>
-        <div class="logbook">
-            <h3>Uitgaand</h3>
-            <ul id="uitgaandList"></ul>
-        </div>
-    </div>
+    <ul>
+        {% for entry in logboek %}
+            <li>{{ entry.tijdstip }} - {{ entry.gastnaam }}: {{ entry.actie }}</li>
+        {% endfor %}
+    </ul>
 </body>
 </html>
