@@ -1,77 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gastpagina</title>
-    <!-- Link naar de style.css -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-        }
-
-        h1 {
-            color: #007bff;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-
-        input[type="text"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 30px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        button:hover {
-            background-color: #0056b3;
-            transform: scale(1.05);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        p {
-            font-size: 16px;
-            color: #555;
-        }
-    </style>
 </head>
 <body>
     <h1>Gastpagina</h1>
-    <input type="text" id="kenteken" placeholder="Kenteken">
+    <link rel="stylesheet" href="/static/styles.css">
+    <input type="text" id="kenteken" placeholder="Voer een kenteken in">
     <button onclick="submitKenteken()">Verstuur</button>
     <p id="responseMessage"></p>
 
     <script>
         async function submitKenteken() {
             const kenteken = document.getElementById("kenteken").value;
-            const response = await fetch('/guest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ kenteken })
-            });
-            const result = await response.json();
-            document.getElementById("responseMessage").textContent = result.message;
+
+            if (!kenteken) {
+                document.getElementById("responseMessage").textContent = "Voer een kenteken in!";
+                return;
+            }
+
+            try {
+                const response = await fetch('http://127.0.0.1:4000/api/slagboom', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': 'nadminkobani'
+                    },
+                    body: JSON.stringify({ kenteken })
+                });
+
+                const result = await response.json();
+                document.getElementById("responseMessage").textContent = result.message;
+            } catch (error) {
+                document.getElementById("responseMessage").textContent = "Kon geen verbinding maken met de server.";
+            }
         }
     </script>
 </body>

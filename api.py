@@ -1,98 +1,125 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Importeer CORS
 from datetime import datetime
-import json
-from flask_cors import CORS
+import pyodbc
+from dotenv import load_dotenv
+import os
+
+# Laad configuratie uit .env
+load_dotenv()
+
+# Flask app
 app = Flask(__name__)
-CORS(app) 
-CONFIG2_FILE = "config2.json"
-DB_FILE = "db.json"
-def load_config(file_path):
+CORS(app)  # Schakel CORS in voor alle routes
+
+# Functie om verbinding te maken met de database
+def create_connection():
     try:
-        with open(file_path, "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        print(f"{file_path} not found. Ensure the file exists.")
-        return {}
-    except json.JSONDecodeError:
-        print(f"Error decoding {file_path}. Check for syntax errors.")
-        return {}
-CONFIG2 = load_config(CONFIG2_FILE)
-def validate_api_key():
-    api_key = request.headers.get("X-API-KEY")
-    expected_key = CONFIG2.get("api_key")
-    if not expected_key:
-        print("API key is not properly loaded from config2.json")
-        return False
-    if not api_key:
-        print("API key is missing in the request header")
-        return False
-    if api_key != expected_key:
-        print(f"Invalid API key provided: {api_key}")
+        connection = pyodbc.connect(
+            f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+            f"SERVER={os.getenv('DB_HOST')};"
+            f"DATABASE={os.getenv('DB_NAME')};"
+            f"UID={os.getenv('DB_USER')};"
+            f"PWD={os.getenv('DB_PASSWORD')};"
+            f"Encrypt=yes;"
+            f"TrustServerCertificate=no;"
+            f"Connection Timeout=30;"
+        )
+        print("Succesvolle databaseverbinding.")
+        return connection
+    except pyodbc.Error as e:
+        print(f"Fout bij verbinden met de database: {e}")
+        return None
+
+# Controleer API-key
+def check_api_key():
+    api_key = request.headers.get("X-API-Key")
+    if api_key != os.getenv("API_KEY"):
+        print("Ongeldige API-key.")
         return False
     return True
-def read_database():
-    try:
-        with open(DB_FILE, "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        print(f"{DB_FILE} not found. Creating a new database file.")
-        write_database({"logboek": [], "kentekens": {}})
-        return {"logboek": [], "kentekens": {}}
-    except json.JSONDecodeError as e:
-        print(f"Error decoding {DB_FILE}: {e}")
-        return {"logboek": [], "kentekens": {}}
-def write_database(data):
-    with open(DB_FILE, "w") as file:
-        json.dump(data, file, indent=4)
-def read_logbook():
-    db = read_database()
-    return db.get("logboek", [])
-def write_log_entry(entry):
-    db = read_database()
-    logbook = db.get("logboek", [])
-    logbook.append(entry)
-    db["logboek"] = logbook
-    write_database(db)
-def read_license_plates():
-    db = read_database()
-    return db.get("kentekens", {})
-SLAGBOOM_STATUS = {
-    "binnenkomst": "closed",
-    "vertrek": "closed"
-}
-@app.route('/slagboom', methods=['POST'])
+
+@app.route('/api/slagboom', methods=['POST'])
 def handle_slagboom():
-    if not validate_api_key():
-        return jsonify({"status": "failed", "message": "Ongeldige API-sleutel"}), 403
+    if not check_api_key():
+        return jsonify({"status": "failed", "message": "Unauthorized"}), 401
+
     data = request.json
     kenteken = data.get("kenteken")
     if not kenteken:
         return jsonify({"status": "failed", "message": "Kenteken is verplicht"}), 400
-    
-    logboek = read_logbook()
-    actie = "binnengekomen"
-   
-    for entry in reversed(logboek):
-        if entry["kenteken"] == kenteken and entry["actie"] == "binnengekomen":
-            actie = "vertrokken"
-            break
-    kentekens = read_license_plates()
-    gastnaam = kentekens.get(kenteken)
-    if gastnaam:
-        SLAGBOOM_STATUS["binnenkomst" if actie == "binnengekomen" else "vertrek"] = "opened"
-        log_entry = {
-            "gastnaam": gastnaam,
-            "kenteken": kenteken,
-            "actie": actie,
-            "tijdstip": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        write_log_entry(log_entry)
-        return jsonify({"status": "success", "message": f"{gastnaam} is succesvol {actie}."}), 200
-    return jsonify({"status": "failed", "message": "Ongeldig kenteken"}), 403
-@app.route('/logboek', methods=['GET'])
+
+    connection = create_connection()
+    if connection is None:
+        return jsonify({"status": "failed", "message": "Kan geen verbinding maken met de database"}), 500
+
+    try:
+        cursor = connection.cursor()
+
+        # Controleer of kenteken in de database staat
+        cursor.execute("SELECT KentekenID, EigenaarNaam FROM dbo.Kentekens WHERE Kenteken = ?", kenteken)
+        result = cursor.fetchone()
+
+        if not result:
+            return jsonify({"status": "failed", "message": f"Kenteken {kenteken} is niet toegestaan"}), 403
+
+        kenteken_id, eigenaar_naam = result
+
+        # Controleer laatste actie in het logboek
+        cursor.execute("SELECT Actie FROM dbo.Logboek WHERE KentekenID = ? ORDER BY Tijdstip DESC", kenteken_id)
+        laatste_actie = cursor.fetchone()
+
+        nieuwe_actie = "binnengekomen" if not laatste_actie or laatste_actie[0] == "vertrokken" else "vertrokken"
+
+        # Voeg nieuwe logboekvermelding toe
+        cursor.execute(
+            "INSERT INTO dbo.Logboek (KentekenID, EigenaarNaam, Actie, Tijdstip) VALUES (?, ?, ?, ?)",
+            (kenteken_id, eigenaar_naam, nieuwe_actie, datetime.now())
+        )
+        connection.commit()
+
+        return jsonify({"status": "success", "message": f"{eigenaar_naam} is succesvol {nieuwe_actie}."}), 200
+
+    except Exception as e:
+        return jsonify({"status": "failed", "message": f"Fout bij verwerking: {e}"}), 500
+    finally:
+        connection.close()
+
+@app.route('/api/logboek', methods=['GET'])
 def logboek():
-    if not validate_api_key():
-        return jsonify({"status": "failed", "message": "Ongeldige API-sleutel"}), 403
-    return jsonify(read_logbook())
+    if not check_api_key():
+        return jsonify({"status": "failed", "message": "Unauthorized"}), 401
+
+    connection = create_connection()
+    if connection is None:
+        return jsonify({"status": "failed", "message": "Kan geen verbinding maken met de database"}), 500
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT l.LogboekID, k.Kenteken, l.EigenaarNaam, l.Actie, l.Tijdstip
+            FROM dbo.Logboek l
+            LEFT JOIN dbo.Kentekens k ON l.KentekenID = k.KentekenID
+            ORDER BY l.Tijdstip DESC
+        """)
+        logboek = cursor.fetchall()
+
+        return jsonify([
+            {
+                "logboek_id": row[0],
+                "kenteken": row[1],
+                "eigenaar_naam": row[2],
+                "actie": row[3],
+                "tijdstip": row[4].strftime('%Y-%m-%d %H:%M:%S')
+            }
+            for row in logboek
+        ])
+
+    except Exception as e:
+        print(f"Fout bij ophalen logboek: {e}")
+        return jsonify({"status": "failed", "message": "Fout bij ophalen logboek"}), 500
+    finally:
+        connection.close()
+
 if __name__ == '__main__':
-    app.run(debug=True, port=4000)  
+    app.run(debug=True, port=4000)
