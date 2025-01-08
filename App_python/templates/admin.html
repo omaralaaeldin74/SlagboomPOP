@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Beheerspagina</title>
+    <script>
+        async function loadLogboek() {
+            try {
+                const response = await fetch('http://127.0.0.1:4000/api/logboek', {
+                    method: 'GET',
+                    headers: {
+                        'X-API-Key': 'nadminkobani'
+                    }
+                });
+
+                const logboek = await response.json();
+                let table = `
+                    <table border="1">
+                        <thead>
+                            <tr>
+                                <th>LogboekID</th>
+                                <th>Kenteken</th>
+                                <th>Eigenaar Naam</th>
+                                <th>Actie</th>
+                                <th>Tijdstip</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                logboek.forEach(entry => {
+                    table += `
+                        <tr>
+                            <td>${entry.logboek_id}</td>
+                            <td>${entry.kenteken}</td>
+                            <td>${entry.eigenaar_naam}</td>
+                            <td>${entry.actie}</td>
+                            <td>${entry.tijdstip}</td>
+                        </tr>
+                    `;
+                });
+
+                table += `</tbody></table>`;
+                document.body.innerHTML += table;
+            } catch (error) {
+                document.body.innerHTML = `<p>Kon de logboekgegevens niet ophalen.</p>`;
+            }
+        }
+
+        window.onload = loadLogboek;
+    </script>
+</head>
+<body>
+    <h1>Beheerspagina - Logboek</h1>
+    <link rel="stylesheet" href="/static/styles.css">
+</body>
+</html>
