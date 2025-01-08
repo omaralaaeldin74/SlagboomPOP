@@ -3,7 +3,7 @@ name: Deploy to Azure Container Instance
 on:
   push:
     branches:
-      - main  # The branch that triggers the workflow
+      - main  # Trigger the workflow on pushes to the main branch
 
 jobs:
   deploy:
@@ -35,7 +35,7 @@ jobs:
           --memory 1.5 \
           --dns-name-label ${{ secrets.DNS_NAME }} \
           --ports 80 \
-          --os-type Linux
+          --os-type Linux  # Explicitly set the OS type to Linux
 
     # Step 4: Add tags to the container
     - name: Add tags to container
