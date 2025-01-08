@@ -1,66 +1,87 @@
-name: Deploy to Azure Container Instance
+name: Deploy API and App to Azure Container Instance
 
 on:
   push:
     branches:
-      - main  # Trigger the workflow on pushes to the main branch
+      - main  # Trigger de workflow bij push naar de main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the code
+    # Stap 1: Checkout de code
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Step 2: Log in to Azure Container Registry (ACR)
+    # Stap 2: Log in bij Azure Container Registry (ACR)
     - name: Log in to Azure Container Registry
       run: |
         echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_NAME }}.azurecr.io \
           -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-    # Step 3: Build and Push the Container Image to ACR
-    - name: Build and Push Container Image
+    # Stap 3: Build en push de API-container
+    - name: Build and Push API Container
       run: |
-        docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ secrets.IMAGE_TAG }} .
-        docker push ${{ secrets.ACR_NAME }}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ secrets.IMAGE_TAG }}
+        docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }} ./API_python
+        docker push ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }}
 
-    # Step 4: Login to Azure
+    # Stap 4: Build en push de App-container
+    - name: Build and Push App Container
+      run: |
+        docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }} ./App_python
+        docker push ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }}
+
+    # Stap 5: Log in bij Azure
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Step 5: Deploy the container to Azure Container Instance
-    - name: Deploy container to Azure Container Instance
+    # Stap 6: Deploy API-container naar Azure Container Instance
+    - name: Deploy API to Azure Container Instance
       run: |
         az container create \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name ${{ secrets.ACI_NAME }} \
-          --image ${{ secrets.ACR_NAME }}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ secrets.IMAGE_TAG }} \
+          --name api-container \
+          --image ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }} \
           --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
           --environment-variables VAR1=value1 VAR2=value2 \
           --cpu 1 \
           --memory 1.5 \
-          --dns-name-label ${{ secrets.DNS_NAME }} \
+          --dns-name-label ${{ secrets.API_DNS_NAME }} \
           --ports 80 \
-          --os-type Linux  # Explicitly set the OS type to Linux
+          --os-type Linux
 
-    # Step 6: Add tags to the container
-    - name: Add tags to container
+    # Stap 7: Deploy App-container naar Azure Container Instance
+    - name: Deploy App to Azure Container Instance
       run: |
-        az resource tag \
+        az container create \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name ${{ secrets.ACI_NAME }} \
-          --resource-type "Microsoft.ContainerInstance/containerGroups" \
-          --tags CreatedBy=Omar
+          --name app-container \
+          --image ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }} \
+          --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
+          --registry-username ${{ secrets.ACR_USERNAME }} \
+          --registry-password ${{ secrets.ACR_PASSWORD }} \
+          --environment-variables VAR1=value1 VAR2=value2 \
+          --cpu 1 \
+          --memory 1.5 \
+          --dns-name-label ${{ secrets.APP_DNS_NAME }} \
+          --ports 80 \
+          --os-type Linux
 
-    # Step 7: Verify the deployment
-    - name: Verify Deployment
+    # Stap 8: Verifieer de API-container deployment
+    - name: Verify API Deployment
       run: |
         az container show \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name ${{ secrets.ACI_NAME }}
+          --name api-container
+
+    # Stap 9: Verifieer de App-container deployment
+    - name: Verify App Deployment
+      run: |
+        az container show \
+          --resource-group ${{ secrets.RESOURCE_GROUP }} \
+          --name app-container
