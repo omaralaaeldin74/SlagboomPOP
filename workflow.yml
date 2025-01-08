@@ -1,0 +1,37 @@
+name: Deploy to Azure Container Instance
+
+on:
+  push:
+    branches:
+      - main  # De branch die de workflow activeert
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Stap 1: Checkout de code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Stap 2: Login bij Azure
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # Stap 3: Deploy de container naar ACI
+    - name: Deploy container to Azure Container Instance
+      run: |
+        az container create \
+          --resource-group ${{ secrets.RESOURCE_GROUP }} \
+          --name ${{ secrets.ACI_NAME }} \
+          --image ${{ secrets.ACR_NAME }}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ secrets.IMAGE_TAG }} \
+          --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
+          --registry-username ${{ secrets.ACR_USERNAME }} \
+          --registry-password ${{ secrets.ACR_PASSWORD }} \
+          --environment-variables VAR1=value1 VAR2=value2 \
+          --cpu 1 \
+          --memory 1.5 \
+          --dns-name-label ${{ secrets.DNS_NAME }} \
+          --ports 80
