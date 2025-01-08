@@ -34,4 +34,14 @@ jobs:
           --cpu 1 \
           --memory 1.5 \
           --dns-name-label ${{ secrets.DNS_NAME }} \
-          --ports 80
+          --ports 80 \
+          --os-type Linux  # Voeg hier expliciet het osType toe
+
+    # Stap 4: Voeg tags toe aan de container
+    - name: Add tags to container
+      run: |
+        az resource tag \
+          --resource-group ${{ secrets.RESOURCE_GROUP }} \
+          --name ${{ secrets.ACI_NAME }} \
+          --resource-type "Microsoft.ContainerInstance/containerGroups" \
+          --tags CreatedBy=Omar
