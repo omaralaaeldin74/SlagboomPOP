@@ -35,7 +35,7 @@ jobs:
           --memory 1.5 \
           --dns-name-label ${{ secrets.DNS_NAME }} \
           --ports 80 \
-          --os-type Linux  # Voeg hier expliciet het osType toe
+          --os-type Linux  # Zorg dat dit expliciet is
 
     # Stap 4: Voeg tags toe aan de container
     - name: Add tags to container
