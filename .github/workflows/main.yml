@@ -35,4 +35,4 @@ jobs:
           --memory 1.5 \
           --dns-name-label ${{ secrets.DNS_NAME }} \
           --ports 80
-          --tags CreatedBy=Omar
+          --tags CreatedBy= "Omar"
