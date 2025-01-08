@@ -20,25 +20,35 @@ jobs:
         echo "${{ secrets.ACR_PASSWORD }}" | docker login slagboomacr.azurecr.io \
           -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-    # Stap 3: Build en push de API-container
+    # Stap 3: Dynamisch DNS-label genereren
+    - name: Generate Dynamic DNS Labels
+      id: dns_labels
+      run: |
+        API_DNS_NAME="api-container-$RANDOM"
+        APP_DNS_NAME="app-container-$RANDOM"
+        echo "API_DNS_NAME=$API_DNS_NAME" >> $GITHUB_ENV
+        echo "APP_DNS_NAME=$APP_DNS_NAME" >> $GITHUB_ENV
+        echo "Generated DNS labels: $API_DNS_NAME and $APP_DNS_NAME"
+
+    # Stap 4: Build en push de API-container
     - name: Build and Push API Container
       run: |
         docker build -t slagboomacr.azurecr.io/api-container:latest ./API_python
         docker push slagboomacr.azurecr.io/api-container:latest
 
-    # Stap 4: Build en push de App-container
+    # Stap 5: Build en push de App-container
     - name: Build and Push App Container
       run: |
         docker build -t slagboomacr.azurecr.io/flask-app-container:latest ./App_python
         docker push slagboomacr.azurecr.io/flask-app-container:latest
 
-    # Stap 5: Log in bij Azure
+    # Stap 6: Log in bij Azure
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Stap 6: Deploy API-container naar Azure Container Instance
+    # Stap 7: Deploy API-container naar Azure Container Instance
     - name: Deploy API to Azure Container Instance
       run: |
         az container create \
@@ -51,11 +61,11 @@ jobs:
           --environment-variables VAR1=value1 VAR2=value2 \
           --cpu 1 \
           --memory 1.5 \
-          --dns-name-label ${{ secrets.API_DNS_NAME }} \
+          --dns-name-label ${{ env.API_DNS_NAME }} \
           --ports 80 \
           --os-type Linux
 
-    # Stap 7: Deploy App-container naar Azure Container Instance
+    # Stap 8: Deploy App-container naar Azure Container Instance
     - name: Deploy App to Azure Container Instance
       run: |
         az container create \
@@ -68,18 +78,18 @@ jobs:
           --environment-variables VAR1=value1 VAR2=value2 \
           --cpu 1 \
           --memory 1.5 \
-          --dns-name-label ${{ secrets.APP_DNS_NAME }} \
+          --dns-name-label ${{ env.APP_DNS_NAME }} \
           --ports 80 \
           --os-type Linux
 
-    # Stap 8: Verifieer de API-container deployment
+    # Stap 9: Verifieer de API-container deployment
     - name: Verify API Deployment
       run: |
         az container show \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
           --name api-container
 
-    # Stap 9: Verifieer de App-container deployment
+    # Stap 10: Verifieer de App-container deployment
     - name: Verify App Deployment
       run: |
         az container show \
