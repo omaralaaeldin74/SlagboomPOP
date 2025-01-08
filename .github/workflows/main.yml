@@ -14,13 +14,25 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Step 2: Login to Azure
+    # Step 2: Log in to Azure Container Registry (ACR)
+    - name: Log in to Azure Container Registry
+      run: |
+        echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_NAME }}.azurecr.io \
+          -u ${{ secrets.ACR_USERNAME }} --password-stdin
+
+    # Step 3: Build and Push the Container Image to ACR
+    - name: Build and Push Container Image
+      run: |
+        docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ secrets.IMAGE_TAG }} .
+        docker push ${{ secrets.ACR_NAME }}.azurecr.io/${{ secrets.IMAGE_NAME }}:${{ secrets.IMAGE_TAG }}
+
+    # Step 4: Login to Azure
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Step 3: Deploy the container to Azure Container Instance
+    # Step 5: Deploy the container to Azure Container Instance
     - name: Deploy container to Azure Container Instance
       run: |
         az container create \
@@ -37,7 +49,7 @@ jobs:
           --ports 80 \
           --os-type Linux  # Explicitly set the OS type to Linux
 
-    # Step 4: Add tags to the container
+    # Step 6: Add tags to the container
     - name: Add tags to container
       run: |
         az resource tag \
@@ -46,7 +58,7 @@ jobs:
           --resource-type "Microsoft.ContainerInstance/containerGroups" \
           --tags CreatedBy=Omar
 
-    # Step 5: Verify the deployment
+    # Step 7: Verify the deployment
     - name: Verify Deployment
       run: |
         az container show \
