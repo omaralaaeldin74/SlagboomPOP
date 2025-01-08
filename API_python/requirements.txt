@@ -1,6 +1,8 @@
-# Flask and essential libraries
-flask==3.0.3         # Core web framework
-flask-cors==3.0.10   # Cross-Origin Resource Sharing support
+flask==3.0.3
+flask-cors==3.0.10
 
-# Environment variable management
-python-dotenv==1.0.0 # To load environment variables from .env file
+
+pyodbc==4.0.35
+
+
+python-dotenv==1.0.0
