@@ -58,7 +58,7 @@ jobs:
           --registry-login-server slagboomacr.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --environment-variables VAR1=value1 VAR2=value2 \
+          --environment-variables API_KEY=${{ secrets.API_KEY }} VAR1=value1 VAR2=value2 \
           --cpu 1 \
           --memory 1.5 \
           --dns-name-label ${{ env.API_DNS_NAME }} \
@@ -75,7 +75,7 @@ jobs:
           --registry-login-server slagboomacr.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --environment-variables VAR1=value1 VAR2=value2 \
+          --environment-variables API_KEY=${{ secrets.API_KEY }} VAR1=value1 VAR2=value2 \
           --cpu 1 \
           --memory 1.5 \
           --dns-name-label ${{ env.APP_DNS_NAME }} \
