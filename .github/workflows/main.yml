@@ -28,33 +28,39 @@ jobs:
       # Step 4: Build and push the API container image
       - name: Build and Push API Container
         run: |
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }} ./API_python
-          docker push ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }}
+          API_IMAGE_TAG=${{ secrets.API_IMAGE_TAG }}
+          if [ -z "$API_IMAGE_TAG" ]; then
+            API_IMAGE_TAG="latest"
+          fi
+          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/api-container:$API_IMAGE_TAG ./API_python
+          docker push ${{ secrets.ACR_NAME }}.azurecr.io/api-container:$API_IMAGE_TAG
  
       # Step 5: Build and push the App container image
       - name: Build and Push App Container
         run: |
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }} ./App_python
-          docker push ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }}
+          APP_IMAGE_TAG=${{ secrets.APP_IMAGE_TAG }}
+          if [ -z "$APP_IMAGE_TAG" ]; then
+            APP_IMAGE_TAG="latest"
+          fi
+          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/app-container:$APP_IMAGE_TAG ./App_python
+          docker push ${{ secrets.ACR_NAME }}.azurecr.io/app-container:$APP_IMAGE_TAG
  
       # Step 6: Deploy both containers to Azure Container Instances
       - name: Deploy to Azure Container Instance
         run: |
-          api_dns_name="api-instance-$(date +%s)"
-          app_dns_name="app-instance-$(date +%s)"
- 
           az container create --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --name api-container-instance \
-            --image ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }} \
+            --image ${{ secrets.ACR_NAME }}.azurecr.io/api-container:$API_IMAGE_TAG \
             --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
-            --ports 4000
+            --ports 4000 \
+            --environment-variables API_KEY=${{ secrets.API_KEY }} DB_HOST=${{ secrets.DB_HOST }} DB_NAME=${{ secrets.DB_NAME }} DB_USER=${{ secrets.DB_USER }} DB_PASSWORD=${{ secrets.DB_PASSWORD }}
  
           az container create --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --name app-container-instance \
-            --image ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }} \
+            --image ${{ secrets.ACR_NAME }}.azurecr.io/app-container:$APP_IMAGE_TAG \
             --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
             --registry-username ${{ secrets.ACR_USERNAME }} \
-            --registry-password ${{ secrets.ACR_PASSWORD }} 
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
             --ports 5000
