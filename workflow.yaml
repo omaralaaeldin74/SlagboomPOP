@@ -3,7 +3,7 @@ name: Deploy API and App to Azure Container Instance
 on:
   push:
     branches:
-      - main  # Trigger de workflow bij push naar de main branch
+      - main
 
 jobs:
   deploy:
@@ -24,14 +24,8 @@ jobs:
     - name: Generate DNS Labels
       id: dns_labels
       run: |
-        # Dynamische DNS-namen
         API_DNS_NAME="api-container-$RANDOM"
         APP_DNS_NAME="app-container-$RANDOM"
-
-        # Alternatief: vaste namen (optioneel aanpassen)
-        # API_DNS_NAME="api-container"
-        # APP_DNS_NAME="app-container"
-
         echo "API_DNS_NAME=$API_DNS_NAME" >> $GITHUB_ENV
         echo "APP_DNS_NAME=$APP_DNS_NAME" >> $GITHUB_ENV
         echo "Generated DNS labels: $API_DNS_NAME and $APP_DNS_NAME"
@@ -54,7 +48,14 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Stap 7: Deploy API-container naar Azure Container Instance
+    # Stap 7: Debugging: Controleer secrets en omgevingsvariabelen
+    - name: Debugging Secrets and Variables
+      run: |
+        echo "Resource Group: ${{ secrets.RESOURCE_GROUP }}"
+        echo "API DNS: ${{ env.API_DNS_NAME }}"
+        echo "APP DNS: ${{ env.APP_DNS_NAME }}"
+
+    # Stap 8: Deploy API-container
     - name: Deploy API to Azure Container Instance
       run: |
         az container create \
@@ -71,7 +72,7 @@ jobs:
           --ports 4000 \
           --os-type Linux
 
-    # Stap 8: Deploy App-container naar Azure Container Instance
+    # Stap 9: Deploy App-container
     - name: Deploy App to Azure Container Instance
       run: |
         az container create \
@@ -88,14 +89,14 @@ jobs:
           --ports 5000 \
           --os-type Linux
 
-    # Stap 9: Verifieer de API-container deployment
+    # Stap 10: Verifieer de API-container deployment
     - name: Verify API Deployment
       run: |
         az container show \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
           --name api-container --query "{status:instanceView.state, events:instanceView.events}" --output table
 
-    # Stap 10: Verifieer de App-container deployment
+    # Stap 11: Verifieer de App-container deployment
     - name: Verify App Deployment
       run: |
         az container show \
