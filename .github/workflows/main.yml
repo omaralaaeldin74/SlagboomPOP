@@ -1,115 +1,42 @@
-name: Deploy to Azure Container Instance
- 
+name: Deploy API and App to Azure Container Instance
+
 on:
-
   push:
-
     branches:
+      - main
 
-      - main  # Trigger the workflow on a push to the main branch
- 
 jobs:
-
-  build-and-deploy:
-
+  deploy:
     runs-on: ubuntu-latest
- 
+
     steps:
+    # Stap 1: Checkout de code
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      # Step 1: Check out the code
+    # Stap 2: Debugging Secrets and Variables
+    - name: Debug Resource Group
+      run: echo "Resource Group: ${{ secrets.RESOURCE_GROUP }}"
 
-      - name: Checkout code
+    # Stap 3: Log in bij Azure Container Registry (ACR)
+    - name: Log in to Azure Container Registry
+      run: |
+        echo "${{ secrets.ACR_PASSWORD }}" | docker login slagboomacr.azurecr.io \
+          -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-        uses: actions/checkout@v3
- 
-      # Step 2: Log in to Azure using Azure CLI
-
-      - name: Log in to Azure
-
-        uses: azure/login@v1
-
-        with:
-
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
- 
-      # Step 3: Log in to Azure Container Registry using Docker CLI
-
-      - name: Log in to Azure Container Registry
-
-        run: |
-
-          echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_NAME }}.azurecr.io -u ${{ secrets.ACR_USERNAME }} --password-stdin
- 
-      # Step 4: Build and push the API container image
-
-      - name: Build and Push API Container
-
-        run: |
-
-          API_IMAGE_TAG=${{ secrets.API_IMAGE_TAG }}
-
-          if [ -z "$API_IMAGE_TAG" ]; then
-
-            API_IMAGE_TAG="latest"
-
-          fi
-
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/api-container:$API_IMAGE_TAG ./API_python
-
-          docker push ${{ secrets.ACR_NAME }}.azurecr.io/api-container:$API_IMAGE_TAG
- 
-      # Step 5: Build and push the App container image
-
-      - name: Build and Push App Container
-
-        run: |
-
-          APP_IMAGE_TAG=${{ secrets.APP_IMAGE_TAG }}
-
-          if [ -z "$APP_IMAGE_TAG" ]; then
-
-            APP_IMAGE_TAG="latest"
-
-          fi
-
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/app-container:$APP_IMAGE_TAG ./App_python
-
-          docker push ${{ secrets.ACR_NAME }}.azurecr.io/app-container:$APP_IMAGE_TAG
- 
-      # Step 6: Deploy both containers to Azure Container Instances
-
-      - name: Deploy to Azure Container Instance
-
-        run: |
-
-          az container create --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-
-            --name api-container-instance \
-
-            --image ${{ secrets.ACR_NAME }}.azurecr.io/api-container:$API_IMAGE_TAG \
-
-            --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
-
-            --registry-username ${{ secrets.ACR_USERNAME }} \
-
-            --registry-password ${{ secrets.ACR_PASSWORD }} \
-
-            --ports 4000 \
-
-            --environment-variables API_KEY=${{ secrets.API_KEY }} DB_HOST=${{ secrets.DB_HOST }} DB_NAME=${{ secrets.DB_NAME }} DB_USER=${{ secrets.DB_USER }} DB_PASSWORD=${{ secrets.DB_PASSWORD }}
- 
-          az container create --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-
-            --name app-container-instance \
-
-            --image ${{ secrets.ACR_NAME }}.azurecr.io/app-container:$APP_IMAGE_TAG \
-
-            --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
-
-            --registry-username ${{ secrets.ACR_USERNAME }} \
-
-            --registry-password ${{ secrets.ACR_PASSWORD }} \
-
-            --ports 4000
-
- 
+    # Stap 4: Deploy API-container
+    - name: Deploy API to Azure Container Instance
+      run: |
+        az container create \
+          --resource-group ${{ secrets.RESOURCE_GROUP }} \
+          --name api-container \
+          --image slagboomacr.azurecr.io/api-container:latest \
+          --registry-login-server slagboomacr.azurecr.io \
+          --registry-username ${{ secrets.ACR_USERNAME }} \
+          --registry-password ${{ secrets.ACR_PASSWORD }} \
+          --environment-variables API_KEY=${{ secrets.API_KEY }} VAR1=value1 VAR2=value2 \
+          --cpu 1 \
+          --memory 1.5 \
+          --dns-name-label api-container \
+          --ports 4000 \
+          --os-type Linux
