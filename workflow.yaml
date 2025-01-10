@@ -1,4 +1,4 @@
-name: Deploy to Azure Container Instance
+name: Deploy API and App to Azure Container Instance
 
 on:
   push:
@@ -14,74 +14,83 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Stap 2: Log in bij Azure Container Registry (ACR)
+    # Stap 2: Debug Secrets en Variabelen
+    - name: Debug Secrets
+      run: |
+        echo "Resource Group: ${{ secrets.RESOURCE_GROUP }}"
+        echo "ACR Name: ${{ secrets.ACR_NAME }}"
+        echo "ACR Username: ${{ secrets.ACR_USERNAME }}"
+        echo "ACI Name: ${{ secrets.ACI_NAME }}"
+        echo "API_KEY: [HIDDEN]"
+        echo "DB_HOST: ${{ secrets.DB_HOST }}"
+
+    # Stap 3: Log in bij Azure Container Registry (ACR)
     - name: Log in to Azure Container Registry
       run: |
-        echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_NAME }}.azurecr.io \
+        echo "${{ secrets.ACR_PASSWORD }}" | docker login slagboomacr.azurecr.io \
           -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-    # Stap 3: Build en push de API-container
+    # Stap 4: Build en push de API-container
     - name: Build and Push API Container
       run: |
-        docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }} ./api
-        docker push ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }}
+        docker build -t slagboomacr.azurecr.io/api-container:latest ./API_python
+        docker push slagboomacr.azurecr.io/api-container:latest
 
-    # Stap 4: Build en push de App-container
+    # Stap 5: Build en push de App-container
     - name: Build and Push App Container
       run: |
-        docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }} ./app
-        docker push ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }}
+        docker build -t slagboomacr.azurecr.io/flask-app-container:latest ./App_python
+        docker push slagboomacr.azurecr.io/flask-app-container:latest
 
-    # Stap 5: Log in bij Azure
+    # Stap 6: Log in bij Azure
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Stap 6: Deploy API-container naar Azure Container Instance
+    # Stap 7: Deploy API-container naar Azure Container Instance
     - name: Deploy API to Azure Container Instance
       run: |
         az container create \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name api-container \
-          --image ${{ secrets.ACR_NAME }}.azurecr.io/api-container:${{ secrets.API_IMAGE_TAG }} \
-          --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
+          --name ${{ secrets.ACI_NAME }}-api \
+          --image slagboomacr.azurecr.io/api-container:latest \
+          --registry-login-server slagboomacr.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --environment-variables VAR1=value1 VAR2=value2 \
+          --environment-variables API_KEY=${{ secrets.API_KEY }} DB_HOST=${{ secrets.DB_HOST }} DB_NAME=${{ secrets.DB_NAME }} DB_USER=${{ secrets.DB_USER }} DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
           --cpu 1 \
           --memory 1.5 \
-          --dns-name-label ${{ secrets.API_DNS_NAME }} \
+          --dns-name-label ${{ secrets.ACI_NAME }}-api \
           --ports 4000 \
           --os-type Linux
 
-    # Stap 7: Deploy App-container naar Azure Container Instance
+    # Stap 8: Deploy App-container naar Azure Container Instance
     - name: Deploy App to Azure Container Instance
       run: |
         az container create \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name app-container \
-          --image ${{ secrets.ACR_NAME }}.azurecr.io/app-container:${{ secrets.APP_IMAGE_TAG }} \
-          --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
+          --name ${{ secrets.ACI_NAME }}-app \
+          --image slagboomacr.azurecr.io/flask-app-container:latest \
+          --registry-login-server slagboomacr.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --environment-variables VAR1=value1 VAR2=value2 \
+          --environment-variables API_KEY=${{ secrets.API_KEY }} VAR1=value1 VAR2=value2 \
           --cpu 1 \
           --memory 1.5 \
-          --dns-name-label ${{ secrets.APP_DNS_NAME }} \
+          --dns-name-label ${{ secrets.ACI_NAME }}-app \
           --ports 5000 \
           --os-type Linux
 
-    # Stap 8: Verifieer de API-container deployment
+    # Stap 9: Verifieer de API-container deployment
     - name: Verify API Deployment
       run: |
         az container show \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name api-container
+          --name ${{ secrets.ACI_NAME }}-api --query "{status:instanceView.state, events:instanceView.events}" --output table
 
-    # Stap 9: Verifieer de App-container deployment
+    # Stap 10: Verifieer de App-container deployment
     - name: Verify App Deployment
       run: |
         az container show \
-          --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name app-container
+          --res

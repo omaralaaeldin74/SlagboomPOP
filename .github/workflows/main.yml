@@ -14,21 +14,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Stap 2: Log in bij Azure Container Registry (ACR)
+    # Stap 2: Debug Secrets en Variabelen
+    - name: Debug Secrets
+      run: |
+        echo "Resource Group: ${{ secrets.RESOURCE_GROUP }}"
+        echo "ACR Name: ${{ secrets.ACR_NAME }}"
+        echo "ACR Username: ${{ secrets.ACR_USERNAME }}"
+        echo "ACI Name: ${{ secrets.ACI_NAME }}"
+        echo "API_KEY: [HIDDEN]"
+        echo "DB_HOST: ${{ secrets.DB_HOST }}"
+
+    # Stap 3: Log in bij Azure Container Registry (ACR)
     - name: Log in to Azure Container Registry
       run: |
         echo "${{ secrets.ACR_PASSWORD }}" | docker login slagboomacr.azurecr.io \
           -u ${{ secrets.ACR_USERNAME }} --password-stdin
-
-    # Stap 3: Dynamisch DNS-label genereren
-    - name: Generate Dynamic DNS Labels
-      id: dns_labels
-      run: |
-        API_DNS_NAME="api-container-$RANDOM"
-        APP_DNS_NAME="app-container-$RANDOM"
-        echo "API_DNS_NAME=$API_DNS_NAME" >> $GITHUB_ENV
-        echo "APP_DNS_NAME=$APP_DNS_NAME" >> $GITHUB_ENV
-        echo "Generated DNS labels: $API_DNS_NAME and $APP_DNS_NAME"
 
     # Stap 4: Build en push de API-container
     - name: Build and Push API Container
@@ -53,15 +53,15 @@ jobs:
       run: |
         az container create \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name api-container \
+          --name ${{ secrets.ACI_NAME }}-api \
           --image slagboomacr.azurecr.io/api-container:latest \
           --registry-login-server slagboomacr.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --environment-variables VAR1=value1 VAR2=value2 \
+          --environment-variables API_KEY=${{ secrets.API_KEY }} DB_HOST=${{ secrets.DB_HOST }} DB_NAME=${{ secrets.DB_NAME }} DB_USER=${{ secrets.DB_USER }} DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
           --cpu 1 \
           --memory 1.5 \
-          --dns-name-label ${{ env.API_DNS_NAME }} \
+          --dns-name-label ${{ secrets.ACI_NAME }}-api \
           --ports 4000 \
           --os-type Linux
 
@@ -70,15 +70,15 @@ jobs:
       run: |
         az container create \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name flask-app-container \
+          --name ${{ secrets.ACI_NAME }}-app \
           --image slagboomacr.azurecr.io/flask-app-container:latest \
           --registry-login-server slagboomacr.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --environment-variables VAR1=value1 VAR2=value2 \
+          --environment-variables API_KEY=${{ secrets.API_KEY }} VAR1=value1 VAR2=value2 \
           --cpu 1 \
           --memory 1.5 \
-          --dns-name-label ${{ env.APP_DNS_NAME }} \
+          --dns-name-label ${{ secrets.ACI_NAME }}-app \
           --ports 5000 \
           --os-type Linux
 
@@ -87,11 +87,11 @@ jobs:
       run: |
         az container show \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name api-container
+          --name ${{ secrets.ACI_NAME }}-api --query "{status:instanceView.state, events:instanceView.events}" --output table
 
     # Stap 10: Verifieer de App-container deployment
     - name: Verify App Deployment
       run: |
         az container show \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
-          --name flask-app-container
+          --name ${{ secrets.ACI_NAME }}-app --query "{status:instanceView.state, events:instanceView.events}" --output table
