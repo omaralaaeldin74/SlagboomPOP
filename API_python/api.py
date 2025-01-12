@@ -1,25 +1,35 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS  
+from flask_cors import CORS
 from datetime import datetime
 import pyodbc
-from dotenv import load_dotenv
-import os
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 
-load_dotenv()
+# Azure Key Vault configuratie
+vault_url = "https://<your-keyvault-name>.vault.azure.net/"
+credential = DefaultAzureCredential()
+client = SecretClient(vault_url=vault_url, credential=credential)
+
+# Geheimen ophalen uit Key Vault
+DB_HOST = client.get_secret("DB_HOST").value
+DB_NAME = client.get_secret("DB_NAME").value
+DB_USER = client.get_secret("DB_USER").value
+DB_PASSWORD = client.get_secret("DB_PASSWORD").value
+API_KEY = client.get_secret("API_KEY").value
 
 # Flask app
 app = Flask(__name__)
-CORS(app)  
+CORS(app)
 
 
 def create_connection():
     try:
         connection = pyodbc.connect(
             f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-            f"SERVER={os.getenv('DB_HOST')};"
-            f"DATABASE={os.getenv('DB_NAME')};"
-            f"UID={os.getenv('DB_USER')};"
-            f"PWD={os.getenv('DB_PASSWORD')};"
+            f"SERVER={DB_HOST};"
+            f"DATABASE={DB_NAME};"
+            f"UID={DB_USER};"
+            f"PWD={DB_PASSWORD};"
             f"Encrypt=yes;"
             f"TrustServerCertificate=no;"
             f"Connection Timeout=30;"
@@ -33,7 +43,7 @@ def create_connection():
 
 def check_api_key():
     api_key = request.headers.get("X-API-Key")
-    if api_key != os.getenv("API_KEY"):
+    if api_key != API_KEY:
         print("Ongeldige API-key.")
         return False
     return True
@@ -63,13 +73,11 @@ def handle_slagboom():
 
         kenteken_id, eigenaar_naam = result
 
-        
         cursor.execute("SELECT Actie FROM dbo.Logboek WHERE KentekenID = ? ORDER BY Tijdstip DESC", kenteken_id)
         laatste_actie = cursor.fetchone()
 
         nieuwe_actie = "binnengekomen" if not laatste_actie or laatste_actie[0] == "vertrokken" else "vertrokken"
 
-       
         cursor.execute(
             "INSERT INTO dbo.Logboek (KentekenID, EigenaarNaam, Actie, Tijdstip) VALUES (?, ?, ?, ?)",
             (kenteken_id, eigenaar_naam, nieuwe_actie, datetime.now())
@@ -121,4 +129,3 @@ def logboek():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=4000)
-

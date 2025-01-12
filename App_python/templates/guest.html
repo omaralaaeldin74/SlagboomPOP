@@ -11,6 +11,8 @@
     <p id="responseMessage"></p>
 
     <script>
+        const API_BASE_URL = 'https://<your-api-dns>.azurecontainer.io'; // Gebruik je API-DNS
+
         async function submitKenteken() {
             const kenteken = document.getElementById("kenteken").value;
 
@@ -20,11 +22,11 @@
             }
 
             try {
-                const response = await fetch('http://48.209.175.239:4000/api/slagboom', { // Hier aangepast
+                const response = await fetch(`${API_BASE_URL}/api/slagboom`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-API-Key': 'nadminkobani'
+                        'X-API-Key': '<API_KEY>' // Zorg dat dit dynamisch geladen wordt
                     },
                     body: JSON.stringify({ kenteken })
                 });

@@ -1,17 +1,15 @@
 from flask import Flask, render_template, request, jsonify
-from dotenv import load_dotenv
-import os
 from flask_cors import CORS
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 
-# Laad omgevingsvariabelen
-load_dotenv()
+# Azure Key Vault configuratie
+vault_url = "https://<your-keyvault-name>.vault.azure.net/"
+credential = DefaultAzureCredential()
+client = SecretClient(vault_url=vault_url, credential=credential)
 
-# Haal API-sleutel uit .env
-API_KEY = os.getenv("API_KEY")
-
-# Controleer of de API-sleutel geladen is
-if not API_KEY:
-    raise ValueError("API_KEY ontbreekt in .env bestand!")
+# Geheim ophalen uit Key Vault
+API_KEY = client.get_secret("API_KEY").value
 
 # Flask-app configuratie
 app = Flask(__name__)
