@@ -3,14 +3,14 @@
 <head>
     <title>Beheerspagina</title>
     <script>
-        const API_BASE_URL = 'https://<your-api-dns>.azurecontainer.io'; // Gebruik je API-DNS
+        const API_BASE_URL = 'https://<your-api-dns>.azurecontainer.io';
 
         async function loadLogboek() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/logboek`, {
                     method: 'GET',
                     headers: {
-                        'X-API-Key': '<API_KEY>' // Zorg dat dit dynamisch geladen wordt
+                        'X-API-Key': sessionStorage.getItem('apiKey') // Dynamisch geladen
                     }
                 });
 

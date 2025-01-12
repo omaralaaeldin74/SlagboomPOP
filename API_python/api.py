@@ -6,16 +6,19 @@ from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 
 # Azure Key Vault configuratie
-vault_url = "https://<your-keyvault-name>.vault.azure.net/"
-credential = DefaultAzureCredential()
-client = SecretClient(vault_url=vault_url, credential=credential)
+try:
+    vault_url = "https://<your-keyvault-name>.vault.azure.net/"
+    credential = DefaultAzureCredential()
+    client = SecretClient(vault_url=vault_url, credential=credential)
 
-# Geheimen ophalen uit Key Vault
-DB_HOST = client.get_secret("DB_HOST").value
-DB_NAME = client.get_secret("DB_NAME").value
-DB_USER = client.get_secret("DB_USER").value
-DB_PASSWORD = client.get_secret("DB_PASSWORD").value
-API_KEY = client.get_secret("API_KEY").value
+    # Geheimen ophalen uit Key Vault
+    DB_HOST = client.get_secret("DB_HOST").value
+    DB_NAME = client.get_secret("DB_NAME").value
+    DB_USER = client.get_secret("DB_USER").value
+    DB_PASSWORD = client.get_secret("DB_PASSWORD").value
+    API_KEY = client.get_secret("API_KEY").value
+except Exception as e:
+    raise RuntimeError(f"Fout bij het ophalen van geheimen uit Azure Key Vault: {e}")
 
 # Flask app
 app = Flask(__name__)
@@ -43,8 +46,8 @@ def create_connection():
 
 def check_api_key():
     api_key = request.headers.get("X-API-Key")
-    if api_key != API_KEY:
-        print("Ongeldige API-key.")
+    if not api_key or api_key != API_KEY:
+        print("Ongeldige of ontbrekende API-key.")
         return False
     return True
 

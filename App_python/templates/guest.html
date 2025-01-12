@@ -11,7 +11,7 @@
     <p id="responseMessage"></p>
 
     <script>
-        const API_BASE_URL = 'https://<your-api-dns>.azurecontainer.io'; // Gebruik je API-DNS
+        const API_BASE_URL = 'https://<your-api-dns>.azurecontainer.io';
 
         async function submitKenteken() {
             const kenteken = document.getElementById("kenteken").value;
@@ -26,7 +26,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-API-Key': '<API_KEY>' // Zorg dat dit dynamisch geladen wordt
+                        'X-API-Key': sessionStorage.getItem('apiKey') // Dynamisch geladen
                     },
                     body: JSON.stringify({ kenteken })
                 });

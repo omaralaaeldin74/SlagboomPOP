@@ -4,16 +4,19 @@ from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 
 # Azure Key Vault configuratie
-vault_url = "https://<your-keyvault-name>.vault.azure.net/"
-credential = DefaultAzureCredential()
-client = SecretClient(vault_url=vault_url, credential=credential)
+try:
+    vault_url = "https://<your-keyvault-name>.vault.azure.net/"
+    credential = DefaultAzureCredential()
+    client = SecretClient(vault_url=vault_url, credential=credential)
 
-# Geheim ophalen uit Key Vault
-API_KEY = client.get_secret("API_KEY").value
+    # Geheim ophalen uit Key Vault
+    API_KEY = client.get_secret("API_KEY").value
+except Exception as e:
+    raise RuntimeError(f"Fout bij het ophalen van geheimen uit Azure Key Vault: {e}")
 
 # Flask-app configuratie
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Pas "*" aan voor specifieke origins indien nodig
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Functie om API-sleutel te valideren
 def validate_api_key():
