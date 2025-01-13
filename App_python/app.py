@@ -8,8 +8,6 @@ try:
     vault_url = "https://<your-keyvault-name>.vault.azure.net/"
     credential = DefaultAzureCredential()
     client = SecretClient(vault_url=vault_url, credential=credential)
-
-    # Geheim ophalen uit Key Vault
     API_KEY = client.get_secret("API_KEY").value
 except Exception as e:
     raise RuntimeError(f"Fout bij het ophalen van geheimen uit Azure Key Vault: {e}")
@@ -28,12 +26,6 @@ def validate_api_key():
         app.logger.warning(f"Ongeldige API-sleutel ontvangen: {api_key}")
         return jsonify({"message": "Unauthorized: Invalid API key", "status": "failed"}), 401
 
-# Logging voor debugging
-@app.before_request
-def log_request_info():
-    app.logger.info(f"Ontvangen headers: {request.headers}")
-
-# Routes
 @app.route('/guest', methods=['GET'])
 def guest_page():
     validation_response = validate_api_key()

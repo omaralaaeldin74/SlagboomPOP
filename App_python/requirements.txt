@@ -1,4 +1,6 @@
 flask==3.0.3
 flask-cors==3.0.10
+sqlalchemy==2.0.19
+pyodbc==5.2.0
 azure-identity==1.12.0
-azure-keyvault-secrets==4.5.0
+azure-keyvault-secrets==4.9.0

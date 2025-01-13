@@ -6,15 +6,21 @@
 <body>
     <h1>Gastpagina</h1>
     <link rel="stylesheet" href="/static/styles.css">
-    <input type="text" id="kenteken" placeholder="Voer een kenteken in">
+    <input type="text" id="kenteken" placeholder="Voer een kenteken in" maxlength="10">
     <button onclick="submitKenteken()">Verstuur</button>
     <p id="responseMessage"></p>
 
     <script>
         const API_BASE_URL = 'https://<your-api-dns>.azurecontainer.io';
+        const apiKey = sessionStorage.getItem('apiKey') || '';
 
         async function submitKenteken() {
-            const kenteken = document.getElementById("kenteken").value;
+            const kenteken = document.getElementById("kenteken").value.trim();
+
+            if (!apiKey) {
+                document.getElementById("responseMessage").textContent = "API-sleutel ontbreekt. Log opnieuw in.";
+                return;
+            }
 
             if (!kenteken) {
                 document.getElementById("responseMessage").textContent = "Voer een kenteken in!";
@@ -26,7 +32,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-API-Key': sessionStorage.getItem('apiKey') // Dynamisch geladen
+                        'X-API-Key': apiKey
                     },
                     body: JSON.stringify({ kenteken })
                 });

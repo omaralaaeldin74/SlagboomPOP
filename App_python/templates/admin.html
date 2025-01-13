@@ -4,45 +4,53 @@
     <title>Beheerspagina</title>
     <script>
         const API_BASE_URL = 'https://<your-api-dns>.azurecontainer.io';
+        const apiKey = sessionStorage.getItem('apiKey') || '';
 
         async function loadLogboek() {
+            if (!apiKey) {
+                document.body.innerHTML = `<p>API-sleutel ontbreekt. Log opnieuw in.</p>`;
+                return;
+            }
+
             try {
                 const response = await fetch(`${API_BASE_URL}/api/logboek`, {
                     method: 'GET',
                     headers: {
-                        'X-API-Key': sessionStorage.getItem('apiKey') // Dynamisch geladen
+                        'X-API-Key': apiKey
                     }
                 });
 
                 const logboek = await response.json();
-                let table = `
-                    <table border="1">
-                        <thead>
-                            <tr>
-                                <th>LogboekID</th>
-                                <th>Kenteken</th>
-                                <th>Eigenaar Naam</th>
-                                <th>Actie</th>
-                                <th>Tijdstip</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
+                const table = document.createElement('table');
+                table.border = "1";
 
-                logboek.forEach(entry => {
-                    table += `
+                const header = `
+                    <thead>
                         <tr>
-                            <td>${entry.logboek_id}</td>
-                            <td>${entry.kenteken}</td>
-                            <td>${entry.eigenaar_naam}</td>
-                            <td>${entry.actie}</td>
-                            <td>${entry.tijdstip}</td>
+                            <th>LogboekID</th>
+                            <th>Kenteken</th>
+                            <th>Eigenaar Naam</th>
+                            <th>Actie</th>
+                            <th>Tijdstip</th>
                         </tr>
-                    `;
-                });
+                    </thead>
+                `;
+                table.innerHTML = header;
 
-                table += `</tbody></table>`;
-                document.body.innerHTML += table;
+                const tbody = document.createElement('tbody');
+                logboek.forEach(entry => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${entry.logboek_id}</td>
+                        <td>${entry.kenteken}</td>
+                        <td>${entry.eigenaar_naam}</td>
+                        <td>${entry.actie}</td>
+                        <td>${entry.tijdstip}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+                document.body.appendChild(table);
             } catch (error) {
                 document.body.innerHTML = `<p>Kon de logboekgegevens niet ophalen.</p>`;
             }
