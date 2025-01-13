@@ -5,7 +5,7 @@ from azure.keyvault.secrets import SecretClient
 
 # Azure Key Vault configuratie
 try:
-    vault_url = "https://<your-keyvault-name>.vault.azure.net/"
+    vault_url = "https://abudhabi.vault.azure.net/"
     credential = DefaultAzureCredential()
     client = SecretClient(vault_url=vault_url, credential=credential)
     API_KEY = client.get_secret("API_KEY").value
